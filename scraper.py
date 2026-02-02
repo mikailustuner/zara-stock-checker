@@ -6,20 +6,41 @@ import requests
 import re
 from urllib.parse import urlparse, parse_qs
 
+def launch_browser(p, headless=False):
+    """
+    Attempts to launch a browser using available channels:
+    1. Google Chrome (System)
+    2. Microsoft Edge (System)
+    3. Bundled Chromium (Playwright)
+    """
+    channels = ["chrome", "msedge", None] # None = bundled
+    
+    last_err = None
+    for channel in channels:
+        try:
+            # print(f"DEBUG: Trying browser channel: {channel if channel else 'Bundled'}")
+            if channel:
+                return p.chromium.launch(headless=headless, channel=channel)
+            else:
+                return p.chromium.launch(headless=headless)
+        except Exception as e:
+            last_err = e
+            # print(f"DEBUG: Failed to launch {channel}: {e}")
+            continue
+            
+    raise Exception(f"No suitable browser found. Please install Google Chrome or Microsoft Edge. Error: {last_err}")
+
 # --- Metadata Fetcher (One-time run) ---
 def fetch_product_metadata(url):
     """
     Uses Playwright to fetch the product ID and Size->SKU mapping.
-    Returns:
-        {
-            "product_id": "500041235",
-            "size_map": {"S": 499809719, "M": 499809721, ...}
-        }
     """
     try:
          with sync_playwright() as p:
             print("Fetching metadata...")
-            browser = p.chromium.launch(headless=False)
+            # Use smart launch
+            browser = launch_browser(p, headless=False)
+            
             page = browser.new_page()
             
             page.set_extra_http_headers({
@@ -161,7 +182,9 @@ def check_stock_api(product_id, target_sku=None, size_map=None):
 def check_stock_browser(url, target_size=None):
     try:
          with sync_playwright() as p:
-            browser = p.chromium.launch(headless=False)
+            # Use smart launch
+            browser = launch_browser(p, headless=False)
+            
             page = browser.new_page()
             page.set_extra_http_headers({
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

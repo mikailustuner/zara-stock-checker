@@ -271,7 +271,11 @@ class ZaraStockCheckerApp(ctk.CTk):
                     card.safe_set_status(msg, COLOR_SUCCESS)
                     play_alert_sound()
                 else:
-                     card.safe_set_status("Out of Stock", COLOR_TEXT_SECONDARY)
+                    # Show specific error or status if not just "Out of Stock"
+                    color = COLOR_TEXT_SECONDARY if msg == "Out of Stock" else COLOR_DANGER
+                    # Truncate long error messages for the pill
+                    pill_text = msg if len(msg) < 15 else "Error"
+                    card.safe_set_status(pill_text, color)
             
             sleep_s = int(interval_minutes * 60)
             for i in range(sleep_s):
