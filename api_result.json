@@ -1,0 +1,24 @@
+{
+  "skusAvailability": [
+    {
+      "sku": 464645457,
+      "availability": "out_of_stock"
+    },
+    {
+      "sku": 464645456,
+      "availability": "out_of_stock"
+    },
+    {
+      "sku": 464645453,
+      "availability": "out_of_stock"
+    },
+    {
+      "sku": 464645455,
+      "availability": "out_of_stock"
+    },
+    {
+      "sku": 464645454,
+      "availability": "out_of_stock"
+    }
+  ]
+}

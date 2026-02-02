@@ -193,10 +193,71 @@ def check_stock_browser(url, target_size=None):
                 page.goto(url, timeout=60000)
                 page.wait_for_load_state("domcontentloaded")
                 time.sleep(3) 
-            except:
-                browser.close()
-                return False, "Nav Timeout", None
 
+                # --- DOM CHECK (More Robust) ---
+                # Check for "Add to Bag" button enabling
+                add_btn_texts = ["Add to bag", "Sepete ekle", "Add to basket", "Comprar"]
+                
+                # Try to find sizes directly in the DOM
+                # Selectors: We look for list items in the size selector
+                size_items = page.locator('.product-detail-size-selector__size-list-item')
+                
+                available_sizes = []
+                
+                if size_items.count() > 0:
+                    print(f"debug: Found {size_items.count()} visible size items in DOM")
+                    count = size_items.count()
+                    for i in range(count):
+                        item = size_items.nth(i)
+                        text = item.inner_text().strip()
+                        # Check classes for disabled status
+                        classes = item.get_attribute("class") or ""
+                        is_disabled = "disabled" in classes or "out-of-stock" in classes
+                        
+                        if not is_disabled:
+                            available_sizes.append(text)
+                else:
+                    # Fallback or different structure: Try finding buttons that are not disabled
+                    buttons = page.locator('button[class*="size-selector"]') 
+                    if buttons.count() > 0:
+                         count = buttons.count()
+                         for i in range(count):
+                            btn = buttons.nth(i)
+                            if not btn.is_disabled():
+                                available_sizes.append(btn.inner_text().strip())
+
+                # If we found sizes via DOM, rely on that
+                if available_sizes:
+                    print(f"debug: DOM found sizes: {available_sizes}")
+                    found = False
+                    msg = "Out of Stock"
+                    
+                    if target_size:
+                        # Fuzzy match for target size
+                        t_upper = target_size.upper()
+                        # Check if any available size starts with the target size (e.g. "M" matches "M (EU)")
+                        match = any(s.upper().startswith(t_upper) for s in available_sizes)
+                        if match:
+                            found = True
+                            msg = f"Size {target_size} In Stock!"
+                    else:
+                        found = True
+                        msg = "In Stock!" # Any size
+                    
+                    if found:
+                        if not os.path.exists("screenshots"): os.makedirs("screenshots")
+                        screenshot_path = os.path.abspath(f"screenshots/stock_{int(time.time())}.png")
+                        page.screenshot(path=screenshot_path)
+                        browser.close()
+                        return True, msg, screenshot_path
+                
+                # --- FALLBACK: Payload Check ---
+                print("debug: Fallback to payload check...")
+            except Exception as e:
+                print(f"debug: DOM check failed: {e}")
+                # Continue to payload check
+
+            # (The original logic below acts as a fallback or for initial load)
             data = page.evaluate("() => window.zara ? window.zara.viewPayload : null")
             if not data:
                 browser.close()
@@ -206,22 +267,22 @@ def check_stock_browser(url, target_size=None):
             details = product.get('detail', {})
             colors = details.get('colors', [])
             
-            available_sizes = []
+            payload_sizes = []
             for color in colors:
                 sizes = color.get('sizes', [])
                 for size_obj in sizes:
                     if size_obj.get('availability') == 'in_stock':
-                        available_sizes.append(size_obj.get('name', '').strip())
+                        payload_sizes.append(size_obj.get('name', '').strip())
             
             found = False
             msg = "Out of Stock"
             
             if target_size:
-                if target_size.upper() in [s.upper() for s in available_sizes]:
+                if target_size.upper() in [s.upper() for s in payload_sizes]:
                     found = True
                     msg = f"Size {target_size} In Stock!"
             else:
-                if available_sizes:
+                if payload_sizes:
                     found = True
                     msg = "In Stock!"
             
