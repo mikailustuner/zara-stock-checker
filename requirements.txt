@@ -1,0 +1,4 @@
+customtkinter
+playwright
+playsound==1.2.2
+packaging
